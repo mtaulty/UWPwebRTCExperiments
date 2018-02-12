@@ -1,0 +1,89 @@
+﻿<Page
+    x:Class="App1.MainPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:App1"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="0"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+
+        </Grid.ColumnDefinitions>
+        <Button Content="Initialise" Click="{x:Bind Path=OnInitialise}" IsEnabled="{x:Bind Mode=OneWay, Path=CanInitialise}" HorizontalAlignment="Stretch" Grid.Row="1" Margin="20,20,20,20"/>
+        <Grid Grid.Row="2" Visibility="{x:Bind HasInitialised, Mode=OneWay}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            <Grid Grid.Row="0" Margin="20,20,20,20" Visibility="{x:Bind ShowOfferGrid,Mode=OneWay}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <TextBlock Text="Local Offer SDP Description" />
+                <ScrollViewer MinHeight="120" Grid.Row="1">
+                    <TextBlock IsTextSelectionEnabled="true" Text="{x:Bind Mode=OneWay, Path=LocalOfferSdp}" />
+                </ScrollViewer>
+                <Button Content="Create Offer" Click="{x:Bind Path=OnCreateOffer}" Grid.Row="2" HorizontalAlignment="Stretch" Margin="20,20,20,20"/>
+            </Grid>
+            <Grid Grid.Row="0" Margin="20,20,20,20" Visibility="{x:Bind ShowLocalAnswerGrid,Mode=OneWay}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition/>
+                </Grid.RowDefinitions>
+                <TextBlock Text="Answer SDP Description" />
+                <ScrollViewer MinHeight="120" Grid.Row="1">
+                    <TextBlock IsTextSelectionEnabled="true" Text="{x:Bind Mode=OneWay, Path=LocalAnswerSdp}" />
+                </ScrollViewer>
+            </Grid>
+            <Grid Grid.Row="1" Margin="20,20,20,20" Visibility="{x:Bind ShowRemoteGrid,Mode=OneWay}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <TextBlock Text="Remote Offer SDP Description" />
+                <TextBox AcceptsReturn="True" Grid.Row="1" Text="{x:Bind Mode=TwoWay, Path=RemoteDescriptionSdp}"/>
+                <Button Grid.Row="2" Content="Set As Remote Description" Click="{x:Bind Path=OnSetRemoteDescription}" HorizontalAlignment="Stretch"/>
+            </Grid>
+            <Grid Grid.Row="1" Margin="20,20,20,20" Visibility="{x:Bind ShowRemoteAnswerGrid,Mode=OneWay}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <TextBlock Text="Remote Answer SDP Description" />
+                <TextBox AcceptsReturn="True" Grid.Row="1" Text="{x:Bind Mode=TwoWay, Path=RemoteAnswerSdp}"/>
+                <Button Grid.Row="2" Content="Set As Remote Answer" Click="{x:Bind Path=OnSetRemoteAnswer}" HorizontalAlignment="Stretch"/>
+            </Grid>
+
+            <Grid Grid.Row="2" Margin="20,20,20,20" >
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <TextBlock Text="Ice Candidates" />
+                <ScrollViewer MinHeight="120" Grid.Row="1">
+                    <TextBlock IsTextSelectionEnabled="true" Text="{x:Bind Mode=OneWay, Path=IceCandidates}" />
+                </ScrollViewer>
+                <StackPanel Grid.Row="2" Orientation="Horizontal">
+                    <Button Content="Write to File..." Click="{x:Bind OnWriteIceToFile}" Margin="5"/>
+                    <Button Content="Add Remotes From File..." Click="{x:Bind OnReadIceFromFile}" Margin="5"/>
+                </StackPanel>
+            </Grid>
+        </Grid>
+        <MediaElement x:Name="mediaElement" Grid.RowSpan="3" RealTimePlayback="True" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                      Stretch="Uniform"/>
+
+    </Grid>
+</Page>
