@@ -1,6 +1,7 @@
 ﻿namespace App1
 {
     using Org.WebRtc;
+    using PeerConnectionClient.Signalling;
     using System;
     using System.Collections.Generic;
     using System.ComponentModel;
@@ -8,245 +9,298 @@
     using System.Runtime.CompilerServices;
     using System.Text.RegularExpressions;
     using System.Threading.Tasks;
-    using Windows.Storage;
+    using Windows.Data.Json;
+    using Windows.Networking.Connectivity;
+    using Windows.UI.Xaml;
     using Windows.UI.Xaml.Controls;
 
     public sealed partial class MainPage : Page, INotifyPropertyChanged
     {
         public event PropertyChangedEventHandler PropertyChanged;
 
-        enum OperatingMode
-        {
-            TBD,
-            Offering,
-            Answering
-        }
-
         public MainPage()
         {
             this.InitializeComponent();
-            this.CanInitialise = true;
-            this.CurrentOperatingMode = OperatingMode.TBD;
+            this.currentPeerId = null;
         }
-        OperatingMode CurrentOperatingMode
-        {
-            get => this.currentOperatingMode;
-            set
-            {
-                if (value != this.currentOperatingMode)
-                {
-                    this.currentOperatingMode = value;
-                    this.FireModeDependentPropertyChanges();
-                }
-            }
-        }
-        void FireModeDependentPropertyChanges()
-        {
-            this.FirePropertyChanged(nameof(this.ShowOfferGrid));
-            this.FirePropertyChanged(nameof(this.ShowRemoteGrid));
-            this.FirePropertyChanged(nameof(this.ShowRemoteAnswerGrid));
-            this.FirePropertyChanged(nameof(this.ShowLocalAnswerGrid));
-        }
-        void FirePropertyChanged([CallerMemberName] string propertyName = null)
-        {
-            this.PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
-        public bool ShowOfferGrid =>
-            this.HasInitialised && this.CurrentOperatingMode != OperatingMode.Answering;
+        public bool HasConnected => this.signaller?.IsConnected() == true;
 
-        public bool ShowRemoteGrid =>
-            this.HasInitialised && this.currentOperatingMode == OperatingMode.TBD;
+        public bool IsInitiator
+        {
+            get => this.isInitiator;
+            set
+            {
+                if (this.isInitiator != value)
+                {
+                    this.isInitiator = value;
+                    this.FirePropertyChanged();
+                }
+            }
+        }
+        public string IPAddress
+        {
+            get => this.ipAddress;
+            set
+            {
+                if (this.ipAddress != value)
+                {
+                    this.ipAddress = value;
+                    this.FirePropertyChanged();
+                }
+            }
+        }
+        public int Port
+        {
+            get => this.port;
+            set
+            {
+                if (this.port != value)
+                {
+                    this.port = value;
+                    this.FirePropertyChanged();
+                }
+            }
+        }
+        string HostName
+        {
+            get
+            {
+                var candidate =
+                    NetworkInformation.GetHostNames()
+                    .Where(n => !string.IsNullOrEmpty(n.DisplayName)).FirstOrDefault();
 
-        public bool ShowLocalAnswerGrid =>
-            this.HasInitialised && this.currentOperatingMode == OperatingMode.Answering;
-
-        public bool ShowRemoteAnswerGrid =>
-            this.HasInitialised && this.currentOperatingMode == OperatingMode.Offering;
-
-        public bool CanInitialise
-        {
-            get => this.canInitialise;
-            set
-            {
-                if (this.canInitialise != value)
-                {
-                    this.canInitialise = value;
-                    this.FirePropertyChanged();
-                    this.FirePropertyChanged(nameof(this.HasInitialised));
-                    this.FireModeDependentPropertyChanges();
-                }
+                // Note - only candidate below can be null, not the Displayname
+                return (candidate?.DisplayName ?? "Anonymous");
             }
         }
-        public string IceCandidates
+        async Task InitialiseAsync()
         {
-            get => this.iceCandidates;
-            set
+            if (!this.initialised)
             {
-                if (this.iceCandidates != value)
-                {
-                    this.iceCandidates = value;
-                    this.FirePropertyChanged();
-                }
-            }
-        }
-        public string LocalOfferSdp
-        {
-            get => this.localOfferSdp;
-            set
-            {
-                if (this.localOfferSdp != value)
-                {
-                    this.localOfferSdp = value;
-                    this.FirePropertyChanged();
-                }
-            }
-        }
-        public string LocalAnswerSdp
-        {
-            get => this.localAnswerSdp;
-            set
-            {
-                if (this.localAnswerSdp != value)
-                {
-                    this.localAnswerSdp = value;
-                    this.FirePropertyChanged();
-                }
-            }
-        }
-        public string RemoteDescriptionSdp
-        {
-            get => this.remoteDescriptionSdp;
-            set
-            {
-                if (this.remoteDescriptionSdp != value)
-                {
-                    this.remoteDescriptionSdp = value;
-                    this.FirePropertyChanged();
-                }
-            }
-        }
-        public string RemoteAnswerSdp
-        {
-            get => this.remoteAnswerSdp;
-            set
-            {
-                if (this.remoteAnswerSdp != value)
-                {
-                    this.remoteAnswerSdp = value;
-                    this.FirePropertyChanged();
-                }
-            }
-        }
-        public bool HasInitialised => !this.CanInitialise;
-
-        async void OnInitialise()
-        {
-            if (this.CanInitialise)
-            {
-                this.CanInitialise = false;
+                this.initialised = true;
 
                 // I find that if I don't do this before Initialize() then I crash.
                 await WebRTC.RequestAccessForMediaCapture();
 
                 WebRTC.Initialize(this.Dispatcher);
 
+                this.media = Media.CreateMedia();
+
                 RTCMediaStreamConstraints constraints = new RTCMediaStreamConstraints()
                 {
                     audioEnabled = true,
                     videoEnabled = true
                 };
+                this.userMedia = await media.GetUserMedia(constraints);
 
+                this.media.AddVideoTrackMediaElementPair(this.LocalVideoTrack, this.localMediaElement, "LOCAL");
+            }
+        }
+        async void OnConnectToSignallingAsync()
+        {
+            await this.InitialiseAsync();
+
+            if (this.signaller == null)
+            {
+                this.signaller = new Signaller();
+
+                // Note - not trying to handle everything here, just trying to handle the
+                // minimum that I can to see if I can get things working.
+                this.signaller.OnSignedIn += OnSignallingSignedIn;
+                this.signaller.OnPeerConnected += OnSignallingPeerConnected;
+                this.signaller.OnMessageFromPeer += OnSignallingMessageFromPeer;
+
+                this.signaller.OnServerConnectionFailure += OnSignallingServerConnectionFailure;
+
+                this.signaller.OnDisconnected += OnSignallingDisconnected;
+            }
+            this.signaller.Connect(this.IPAddress, this.Port.ToString(), this.HostName);
+        }
+        void OnSignallingSignedIn()
+        {
+            this.FirePropertyChanged(nameof(this.HasConnected));
+        }
+        async void OnSignallingPeerConnected(int id, string name)
+        {
+            // We are simply going to jump at the first opportunity we get.
+            if (this.isInitiator && (name != this.HostName) && !this.currentPeerId.HasValue)
+            {
+                // We have found a peer to connect to so we will connect to it.
+                this.currentPeerId = id;
+
+                await this.CreatePeerConnectionAsync();
+
+                await this.SendOfferAsync();
+            }
+        }
+        void OnSignallingDisconnected()
+        {
+            this.ShutDown();
+        }
+        void OnSignallingServerConnectionFailure()
+        {
+            this.ShutDown();
+        }
+        void ShutDown()
+        {
+            if (this.media != null)
+            {
+                if (this.LocalVideoTrack != null)
+                {
+                    this.media.RemoveVideoTrackMediaElementPair(this.LocalVideoTrack);
+                }
+                if (this.remoteVideoTrack != null)
+                {
+                    this.media.RemoveVideoTrackMediaElementPair(this.remoteVideoTrack);
+                    this.remoteVideoTrack.Dispose();
+                    this.remoteVideoTrack = null;
+                }
+                this.media.Dispose();
+                this.media = null;
+            }
+            if (this.peerConnection != null)
+            {
+                this.peerConnection.OnIceCandidate -= this.OnIceCandidate;
+                this.peerConnection.OnAddStream -= this.OnRemoteStreamAdded;
+                this.peerConnection.Close();
+                this.peerConnection = null;
+            }
+        }
+        async void OnSignallingMessageFromPeer(int peer_id, string message)
+        {
+            var jsonObject = JsonObject.Parse(message);
+            var sdp = string.Empty;
+
+            if (this.currentPeerId == null)
+            {
+                this.currentPeerId = peer_id;
+            }
+
+            if (this.currentPeerId == peer_id)
+            {
+                switch (SignallerMessagingExtensions.GetMessageType(jsonObject))
+                {
+                    case SignallerMessagingExtensions.MessageType.Offer:
+                        sdp = SignallerMessagingExtensions.SdpFromJsonMessage(jsonObject);
+                        await this.AcceptRemoteOfferAsync(sdp);
+                        break;
+                    case SignallerMessagingExtensions.MessageType.Answer:
+                        sdp = SignallerMessagingExtensions.SdpFromJsonMessage(jsonObject);
+                        await this.peerConnection.SetRemoteDescription(new RTCSessionDescription(RTCSdpType.Answer, sdp));
+                        break;
+                    case SignallerMessagingExtensions.MessageType.Ice:
+                        var candidate = SignallerMessagingExtensions.IceCandidateFromJsonMessage(jsonObject);
+                        await this.peerConnection.AddIceCandidate(candidate);
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }
+        Visibility Negate(bool value)
+        {
+            return (value ? Visibility.Collapsed : Visibility.Visible);
+        }
+        async Task CreatePeerConnectionAsync()
+        {
+            if (this.peerConnection == null)
+            {             
                 this.peerConnection = new RTCPeerConnection(
                     new RTCConfiguration()
                     {
-                        // Hard-coding these for now...
-                        BundlePolicy = RTCBundlePolicy.Balanced,
+                    // Hard-coding these for now...
+                    BundlePolicy = RTCBundlePolicy.Balanced,
 
-                        // I got this wrong for a long time. Because I am not using ICE servers
-                        // I thought this should be 'NONE' but it shouldn't. Even though I am
-                        // not going to add any ICE servers, I still need ICE in order to
-                        // get candidates for how the 2 ends should talk to each other.
-                        // Lesson learned, took a few hours to realise it :-)
-                        IceTransportPolicy = RTCIceTransportPolicy.All
+                    // I got this wrong for a long time. Because I am not using ICE servers
+                    // I thought this should be 'NONE' but it shouldn't. Even though I am
+                    // not going to add any ICE servers, I still need ICE in order to
+                    // get candidates for how the 2 ends should talk to each other.
+                    // Lesson learned, took a few hours to realise it :-)
+                    IceTransportPolicy = RTCIceTransportPolicy.All
                     }
                 );
-
-                this.media = Media.CreateMedia();
-                this.userMedia = await media.GetUserMedia(constraints);
 
                 this.peerConnection.AddStream(this.userMedia);
                 this.peerConnection.OnAddStream += OnRemoteStreamAdded;
                 this.peerConnection.OnIceCandidate += OnIceCandidate;
             }
         }
-
-        void OnIceCandidate(RTCPeerConnectionIceEvent args)
+        MediaVideoTrack LocalVideoTrack
         {
-            this.IceCandidates += $"{args.Candidate.Candidate}|{args.Candidate.SdpMid}|{args.Candidate.SdpMLineIndex}\n";
-        }
-
-        async void OnCreateOffer()
-        {
-            if (this.HasInitialised)
+            get
             {
-                this.CurrentOperatingMode = OperatingMode.Offering;
-
-                // Create the offer.
-                var description = await this.peerConnection.CreateOffer();
-
-                // We filter some pieces out of the SDP based on what I think
-                // aren't supported Codecs. I largely took it from the original sample
-                // when things didn't work for me without it.
-                var filteredDescriptionSdp = FilterToSupportedCodecs(description.Sdp);
-
-                description.Sdp = filteredDescriptionSdp;
-
-                // Set that filtered offer description as our local description.
-                await this.peerConnection.SetLocalDescription(description);
-
-                // Put it on the UI so someone can copy it.
-                this.LocalOfferSdp = description.Sdp;
+                return (this.userMedia?.GetVideoTracks()?.FirstOrDefault());
             }
         }
-        async void OnSetRemoteDescription()
+        async Task SendOfferAsync()
         {
-            this.CurrentOperatingMode = OperatingMode.Answering;
+            // Create the offer.
+            var description = await this.peerConnection.CreateOffer();
 
-            // Take the description from the UI and set it as our Remote Description
-            // of type 'offer'
-            await this.SetSessionDescription(RTCSdpType.Offer, this.RemoteDescriptionSdp);
+            // We filter some pieces out of the SDP based on what I think
+            // aren't supported Codecs. I largely took it from the original sample
+            // when things didn't work for me without it.
+            var filteredDescriptionSdp = FilterToSupportedCodecs(description.Sdp);
 
-            // And create our answer
-            var answer = await this.peerConnection.CreateAnswer();
+            description.Sdp = filteredDescriptionSdp;
 
-            // And set that as our local description
-            await this.peerConnection.SetLocalDescription(answer);
+            // Set that filtered offer description as our local description.
+            await this.peerConnection.SetLocalDescription(description);
 
-            // And put it back into the UI
-            this.LocalAnswerSdp = answer.Sdp;
+            var jsonMessage = description.ToJsonMessageString(
+                SignallerMessagingExtensions.MessageType.Offer);
+
+            await this.signaller.SendToPeer(this.currentPeerId.Value, jsonMessage);
         }
-        async void OnSetRemoteAnswer()
+        async Task AcceptRemoteOfferAsync(string sdpDescription)
         {
-            await this.SetSessionDescription(RTCSdpType.Answer, this.RemoteAnswerSdp);
-        }
-        async Task SetSessionDescription(RTCSdpType type, string description)
-        {
-            var modifiedNewLineDescription = description.Replace("\r", "\n");
+            // Only if we're expecting a call.
+            if (!this.isInitiator)
+            {
+                await this.CreatePeerConnectionAsync();
 
-            await this.peerConnection.SetRemoteDescription(
-                new RTCSessionDescription(type, modifiedNewLineDescription));
+                // Take the description from the UI and set it as our Remote Description
+                // of type 'offer'
+                await this.peerConnection.SetRemoteDescription(
+                    new RTCSessionDescription(RTCSdpType.Offer, sdpDescription));
+
+                // And create our answer
+                var answer = await this.peerConnection.CreateAnswer();
+
+                // And set that as our local description
+                await this.peerConnection.SetLocalDescription(answer);
+
+                // And sent it back over the network to the peer as the answer.
+                await this.signaller.SendToPeer(
+                    this.currentPeerId.Value,
+                    answer.ToJsonMessageString(SignallerMessagingExtensions.MessageType.Answer));
+            }
         }
-        void OnRemoteStreamAdded(MediaStreamEvent args)
+        async void OnIceCandidate(RTCPeerConnectionIceEvent args)
         {
-            if (this.mediaElement.Source == null)
+            // We send this to our connected peer immediately.
+            if (this.signaller.IsConnected())
+            {
+                var jsonMessage = args.Candidate.ToJsonMessageString();
+                await this.signaller.SendToPeer(this.currentPeerId.Value, jsonMessage);
+            }
+        }
+        async void OnRemoteStreamAdded(MediaStreamEvent args)
+        {
+            if (this.remoteVideoTrack == null)
             {
                 // Get the first video track that's present if any
-                var firstTrack = args?.Stream?.GetVideoTracks().FirstOrDefault();
+                this.remoteVideoTrack = args?.Stream?.GetVideoTracks().FirstOrDefault();
 
-                if (firstTrack != null)
+                if (this.remoteVideoTrack != null)
                 {
-                    // Link it up with the MediaElement that we have in the UI.
-                    this.media.AddVideoTrackMediaElementPair(firstTrack, this.mediaElement, "a label");
+                    await this.DispatchAsync(
+                        () =>
+                        {
+                            // Link it up with the MediaElement that we have in the UI.
+                            this.media.AddVideoTrackMediaElementPair(this.remoteVideoTrack, this.remoteMediaElement, "REMOTE");
+                        }
+                    );
                 }
             }
         }
@@ -301,42 +355,23 @@
 
             return (filteredSdp);
         }
-        async void OnWriteIceToFile()
+        void FirePropertyChanged([CallerMemberName] string propertyName = null)
         {
-            var file = await FileDialogExtensions.PickFileForSaveAsync(
-                "text file", ".txt", "ice.txt");
-
-            await FileIO.WriteTextAsync(file, this.IceCandidates);
+            this.PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
-        async void OnReadIceFromFile()
+        async Task DispatchAsync(Action a)
         {
-            var file = await FileDialogExtensions.PickFileForReadAsync(".txt");
-
-            var contents = await FileIO.ReadTextAsync(file);
-            var lines = contents.Split("\n");
-
-            foreach (var line in lines)
-            {
-                var pieces = line.Split('|');
-
-                if (pieces.Length == 3)
-                {
-                    RTCIceCandidate candidate = new RTCIceCandidate(
-                        pieces[0], pieces[1], ushort.Parse(pieces[2]));
-
-                    await this.peerConnection.AddIceCandidate(candidate);
-                }
-            }
+            await this.Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, () => a());
         }
-        OperatingMode currentOperatingMode = OperatingMode.Offering;
+        bool initialised;
+        bool isInitiator;
+        Signaller signaller;
         Media media;
         MediaStream userMedia;
+        MediaVideoTrack remoteVideoTrack;
         RTCPeerConnection peerConnection;
-        bool canInitialise;
-        string iceCandidates;
-        string localOfferSdp;
-        string remoteDescriptionSdp;
-        string remoteAnswerSdp;
-        string localAnswerSdp;
+        int port = 8888;
+        string ipAddress = "52.174.16.92";
+        int? currentPeerId;
     }
 }
