@@ -11,8 +11,8 @@
         <Grid Visibility="{x:Bind Negate(HasConnected),Mode=OneWay}">
             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                 <StackPanel Orientation="Horizontal">
-                    <TextBox Header="IP Address" Text="{x:Bind IPAddress,Mode=TwoWay}" Margin="5"/>
-                    <TextBox Header="Port" Text="{x:Bind Port,Mode=TwoWay}" Margin="5"/>
+                    <TextBox Header="IP Address" Text="{x:Bind AddressDetails.IPAddress,Mode=TwoWay}" Margin="5"/>
+                    <TextBox Header="Port" Text="{x:Bind AddressDetails.Port,Mode=TwoWay}" Margin="5"/>
                 </StackPanel>
                 <CheckBox IsChecked="{x:Bind IsInitiator,Mode=TwoWay}" Content="Is Initiator" Margin="5"/>
                 <Button Content="Connect to Signalling..." Margin="5" Click="{x:Bind OnConnectToSignallingAsync}"/>
