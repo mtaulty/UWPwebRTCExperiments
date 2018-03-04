@@ -11,7 +11,7 @@ namespace App1.Utility
         protected void SetProperty<T>(ref T storage, T value, 
             [CallerMemberName] string propertyName = null) 
         {
-            if (!storage.Equals(value))
+            if (!object.Equals(storage, value))
             {
                 storage = value;
                 this.PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));

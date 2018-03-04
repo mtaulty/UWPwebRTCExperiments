@@ -1,11 +1,14 @@
 ﻿namespace App1
 {
+    using App1.Interfaces;
     using App1.Model;
     using App1.Signalling;
     using Org.WebRtc;
+    using PeerConnectionClient.Interfaces;
     using PeerConnectionClient.Signalling;
     using System;
     using System.ComponentModel;
+    using System.Linq;
     using System.Runtime.CompilerServices;
     using System.Threading.Tasks;
     using Windows.Data.Json;
@@ -16,13 +19,20 @@
     {
         public event PropertyChangedEventHandler PropertyChanged;
 
-        public MainPage()
+        public MainPage(ISignallingService signaller, IXamlMediaElementProvider xamlElementProvider, 
+            IPeerManager peerManager, IMediaManager mediaManager)
         {
             this.InitializeComponent();
             this.addressDetails = new AddressDetails();
-            this.mediaManager = new MediaManager(this.localMediaElement, this.remoteMediaElement, this.Dispatcher);
-            this.peerManager = new PeerManager(this.mediaManager);
+
+            xamlElementProvider.LocalMediaElement = this.localMediaElement;
+            xamlElementProvider.RemoteMediaElement = this.remoteMediaElement;
+            xamlElementProvider.Dispatcher = this.Dispatcher;
+
+            this.mediaManager = mediaManager;
+            this.peerManager = peerManager;
             this.peerManager.OnIceCandidate += this.OnLocalIceCandidateDeterminedAsync;
+            this.signaller = signaller;
         }
         public AddressDetails AddressDetails
         {
@@ -48,6 +58,8 @@
                 WebRTC.Initialize(this.Dispatcher);
 
                 await this.mediaManager.CreateAsync();
+
+                await this.mediaManager.AddLocalStreamAsync(this.mediaManager.UserMedia);
             }
         }
         async void OnConnectToSignallingAsync()
@@ -67,20 +79,23 @@
                 this.signaller.OnDisconnected += OnSignallingDisconnected;
                 this.signaller.OnPeerHangup += OnSignallingPeerHangup;
             }
-            this.signaller.Connect(this.AddressDetails.IPAddress,
-                this.AddressDetails.Port.ToString(), this.AddressDetails.HostName);
+            await this.signaller.ConnectAsync(
+                this.AddressDetails.IPAddress,
+                this.AddressDetails.Port.ToString(),
+                this.AddressDetails.HostName);
         }
         void OnSignallingSignedIn()
         {
             this.FirePropertyChanged(nameof(this.HasConnected));
         }
-        async void OnSignallingPeerConnected(int id, string name)
+        async void OnSignallingPeerConnected(object id, string name)
         {
             // We are simply going to jump at the first opportunity we get.
             if (this.isInitiator && (name != this.AddressDetails.HostName))
             {
                 // We have found a peer to connect to so we will connect to it.
-                this.peerManager.CreateConnectionForPeerAsync(id);
+                this.peerManager.CreateConnectionForPeerAsync((int)id);
+
                 await this.SendOfferToRemotePeerAsync();
             }
         }
@@ -92,40 +107,42 @@
         {
             this.ShutDown();
         }
-        void OnSignallingPeerHangup(int peer_id)
+        void OnSignallingPeerHangup(object peerId)
         {
             this.peerManager.Shutdown();
         }
-        async void OnSignallingMessageFromPeer(int peer_id, string message)
+        async void OnSignallingMessageFromPeer(object peerId, string message)
         {
+            var numericalPeerId = (int)peerId;
+
             var jsonObject = JsonObject.Parse(message);
 
             switch (SignallerMessagingExtensions.GetMessageType(jsonObject))
             {
                 case SignallerMessagingExtensions.MessageType.Offer:
-                    await this.OnOfferMessageFromPeerAsync(peer_id, jsonObject);
+                    await this.OnOfferMessageFromPeerAsync(numericalPeerId, jsonObject);
                     break;
                 case SignallerMessagingExtensions.MessageType.Answer:
-                    await this.OnAnswerMessageFromPeerAsync(peer_id, jsonObject);
+                    await this.OnAnswerMessageFromPeerAsync(numericalPeerId, jsonObject);
                     break;
                 case SignallerMessagingExtensions.MessageType.Ice:
-                    await this.OnIceMessageFromPeerAsync(peer_id, jsonObject);
+                    await this.OnIceMessageFromPeerAsync(numericalPeerId, jsonObject);
                     break;
                 default:
                     break;
             }
         }
-        async Task OnOfferMessageFromPeerAsync(int peer_id, JsonObject message)
+        async Task OnOfferMessageFromPeerAsync(int peerId, JsonObject message)
         {
             var sdp = SignallerMessagingExtensions.SdpFromJsonMessage(message);
-            await this.AcceptRemotePeerOfferAsync(peer_id, sdp);
+            await this.AcceptRemotePeerOfferAsync(peerId, sdp);
         }
-        async Task OnAnswerMessageFromPeerAsync(int peer_id, JsonObject message)
+        async Task OnAnswerMessageFromPeerAsync(int peerId, JsonObject message)
         {
             var sdp = SignallerMessagingExtensions.SdpFromJsonMessage(message);
             await this.peerManager.AcceptRemoteAnswerAsync(sdp);
         }
-        async Task OnIceMessageFromPeerAsync(int peer_id, JsonObject message)
+        async Task OnIceMessageFromPeerAsync(int peerId, JsonObject message)
         {
             var candidate = SignallerMessagingExtensions.IceCandidateFromJsonMessage(message);
             await this.peerManager.AddIceCandidateAsync(candidate);
@@ -138,7 +155,7 @@
             var jsonMessage = description.ToJsonMessageString(
                 SignallerMessagingExtensions.MessageType.Offer);
 
-            await this.signaller.SendToPeer(this.peerManager.PeerId, jsonMessage);
+            await this.signaller.SendToPeerAsync(this.peerManager.PeerId, jsonMessage);
         }
         async Task AcceptRemotePeerOfferAsync(int peerId, string sdpDescription)
         {
@@ -148,7 +165,7 @@
                 var answer = await this.peerManager.AcceptRemoteOfferAsync(peerId, sdpDescription);
 
                 // And sent it back over the network to the peer as the answer.
-                await this.signaller.SendToPeer(
+                await this.signaller.SendToPeerAsync(
                     this.peerManager.PeerId,
                     answer.ToJsonMessageString(SignallerMessagingExtensions.MessageType.Answer));
             }
@@ -159,7 +176,7 @@
             if (this.signaller.IsConnected())
             {
                 var jsonMessage = args.Candidate.ToJsonMessageString();
-                await this.signaller.SendToPeer(this.peerManager.PeerId, jsonMessage);
+                await this.signaller.SendToPeerAsync(this.peerManager.PeerId, jsonMessage);
             }
         }
         void ShutDown()
@@ -183,11 +200,11 @@
         {
             return (value ? Visibility.Collapsed : Visibility.Visible);
         }
-        MediaManager mediaManager;
-        PeerManager peerManager;
+        IMediaManager mediaManager;
+        IPeerManager peerManager;
+        ISignallingService signaller;
         AddressDetails addressDetails;
         bool initialised;
         bool isInitiator;
-        Signaller signaller;
     }
 }

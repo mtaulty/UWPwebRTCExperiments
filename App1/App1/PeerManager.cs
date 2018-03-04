@@ -1,23 +1,25 @@
 ﻿namespace App1
 {
     using System;
+    using System.Linq;
     using System.Threading.Tasks;
+    using App1.Interfaces;
     using App1.Utility;
     using Org.WebRtc;
 
-    public class PeerManager
+    public class PeerManager : IPeerManager
     {
         public event RTCPeerConnectionIceEventDelegate OnIceCandidate;
 
-        public PeerManager(MediaManager mediaManager)
+        public PeerManager(IMediaManager mediaManager)
         {
             this.mediaManager = mediaManager;
         }
-        public int PeerId => this.currentPeerId.Value;
+        public object PeerId => this.currentPeerId.Value;
 
-        public void CreateConnectionForPeerAsync(int peerId)
+        public void CreateConnectionForPeerAsync(object peerId)
         {
-            this.currentPeerId = peerId;
+            this.currentPeerId = (int)peerId;
 
             if (this.peerConnection == null)
             {
@@ -33,7 +35,7 @@
                 this.peerConnection.OnIceCandidate += OnLocalIceCandidateDetermined;
             }
         }
-        public async Task<RTCSessionDescription> AcceptRemoteOfferAsync(int peerId, string sdpDescription)
+        public async Task<RTCSessionDescription> AcceptRemoteOfferAsync(object peerId, string sdpDescription)
         {
             this.CreateConnectionForPeerAsync(peerId);
 
@@ -81,7 +83,12 @@
         }
         async void OnPeerAddsRemoteStreamAsync(MediaStreamEvent args)
         {
-            await this.mediaManager.AddRemoteStreamAsync(args);
+            var stream = args?.Stream;
+
+            if (stream != null)
+            {
+                await this.mediaManager.AddRemoteStreamAsync(stream);
+            }
         }
         public void Shutdown()
         {
@@ -95,7 +102,7 @@
                 this.currentPeerId = null;
             }
         }
-        MediaManager mediaManager;
+        IMediaManager mediaManager;
         RTCPeerConnection peerConnection;
         int? currentPeerId;
     }
