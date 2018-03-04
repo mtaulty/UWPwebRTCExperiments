@@ -6,7 +6,6 @@ namespace App1.Interfaces
     public interface IPeerManager
     {
         object PeerId { get; }
-
         event RTCPeerConnectionIceEventDelegate OnIceCandidate;
         void CreateConnectionForPeerAsync(object peerId);
         Task<RTCSessionDescription> CreateAndSetLocalOfferAsync();

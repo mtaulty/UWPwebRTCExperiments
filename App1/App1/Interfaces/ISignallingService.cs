@@ -1,9 +1,7 @@
-﻿using PeerConnectionClient.Signalling;
-using System.Threading.Tasks;
-using Windows.Data.Json;
-
-namespace PeerConnectionClient.Interfaces
+﻿namespace PeerConnectionClient.Interfaces
 {
+    using System.Threading.Tasks;
+
     public delegate void SignedInDelegate();
     public delegate void DisconnectedDelegate();
     public delegate void PeerConnectedDelegate(object peerId, string name);
@@ -23,11 +21,8 @@ namespace PeerConnectionClient.Interfaces
         event SignedInDelegate OnSignedIn;
 
         Task ConnectAsync(string server, string port, string client_name);
-
         bool IsConnected();
-
         Task<bool> SendToPeerAsync(object peerId, string message);
-
         Task<bool> SignOutAsync();
     }
 }

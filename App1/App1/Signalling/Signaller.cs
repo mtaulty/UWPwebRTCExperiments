@@ -8,20 +8,18 @@
 // PURPOSE, MERCHANTABILITY, OR NON-INFRINGEMENT.
 //
 //*********************************************************
-
-using PeerConnectionClient.Interfaces;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-using Windows.Data.Json;
-using Windows.Networking;
-using Windows.Networking.Sockets;
-using Windows.Storage.Streams;
-
 namespace PeerConnectionClient.Signalling
 {
+    using PeerConnectionClient.Interfaces;
+    using System;
+    using System.Collections.Generic;
+    using System.Diagnostics;
+    using System.Text.RegularExpressions;
+    using System.Threading.Tasks;
+    using Windows.Networking;
+    using Windows.Networking.Sockets;
+    using Windows.Storage.Streams;
+
     /// <summary>
     /// Signaller instance is used to fire connection events.
     /// </summary>
