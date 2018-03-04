@@ -19,6 +19,8 @@
     {
         public event PropertyChangedEventHandler PropertyChanged;
 
+        // TODO: bit naughty to have a non-default constructor on a XAML page, could move these out
+        // to injected property values.
         public MainPage(ISignallingService signaller, IXamlMediaElementProvider xamlElementProvider, 
             IPeerManager peerManager, IMediaManager mediaManager)
         {

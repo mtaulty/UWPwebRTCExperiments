@@ -13,6 +13,7 @@
         public XamlMediaElementMediaManager(
             IXamlMediaElementProvider xamlElementProvider)
         {
+            this.xamlElementProvider = xamlElementProvider;
         }
         public async Task CreateAsync(bool audioEnabled = true, bool videoEnabled = true)
         {
