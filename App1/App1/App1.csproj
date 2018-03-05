@@ -99,6 +99,8 @@
     <Compile Include="App.xaml.cs">
       <DependentUpon>App.xaml</DependentUpon>
     </Compile>
+    <Compile Include="ConversationManager.cs" />
+    <Compile Include="Interfaces\IConversationManager.cs" />
     <Compile Include="Interfaces\IMediaManager.cs" />
     <Compile Include="Interfaces\IProvideXamlElements.cs" />
     <Compile Include="Interfaces\IPeerManager.cs" />

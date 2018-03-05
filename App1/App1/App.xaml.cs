@@ -42,9 +42,12 @@
         {
             var builder = new ContainerBuilder();
             builder.RegisterType<Signaller>().As<ISignallingService>().SingleInstance();
-            builder.RegisterType<XamlMediaElementProvider>().As<IXamlMediaElementProvider>().SingleInstance();
+
+            builder.RegisterType<XamlMediaElementProvider>().As<IXamlMediaElementProvider>().As<IXamlDispatcherProvider>().SingleInstance();
+
             builder.RegisterType<XamlMediaElementMediaManager>().As<IMediaManager>().SingleInstance();
             builder.RegisterType<PeerManager>().As<IPeerManager>().SingleInstance();
+            builder.RegisterType<ConversationManager>().As<IConversationManager>().SingleInstance();
             builder.RegisterType<MainPage>().AsSelf().SingleInstance();
             this.iocContainer = builder.Build();
         }
