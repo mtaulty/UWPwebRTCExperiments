@@ -111,7 +111,7 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Interfaces\ISignallingService.cs" />
     <Compile Include="Signalling\SignallerMessagingExtensions.cs" />
-    <Compile Include="Signalling\Signalling.cs" />
+    <Compile Include="Signalling\Signaller.cs" />
     <Compile Include="Utility\BindableBase.cs" />
     <Compile Include="Utility\SdpUtility.cs" />
     <Compile Include="XamlMediaElementProvider.cs" />

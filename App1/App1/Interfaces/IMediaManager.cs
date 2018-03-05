@@ -11,7 +11,7 @@ namespace App1.Interfaces
         Task AddRemoteStreamAsync(MediaStream stream);
         Task AddLocalStreamAsync(MediaStream stream);
         void RemoveRemoteStream();
-        void RemoveLocalStream()
+        void RemoveLocalStream();
         void Shutdown();
     }
 }

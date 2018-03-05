@@ -21,10 +21,11 @@
 
         // TODO: bit naughty to have a non-default constructor on a XAML page, could move these out
         // to injected property values.
-        public MainPage(ISignallingService signaller, IXamlMediaElementProvider xamlElementProvider, 
+        public MainPage(ISignallingService signaller, IXamlMediaElementProvider xamlElementProvider,
             IPeerManager peerManager, IMediaManager mediaManager)
         {
             this.InitializeComponent();
+
             this.addressDetails = new AddressDetails();
 
             xamlElementProvider.LocalMediaElement = this.localMediaElement;
@@ -35,6 +36,15 @@
             this.peerManager = peerManager;
             this.peerManager.OnIceCandidate += this.OnLocalIceCandidateDeterminedAsync;
             this.signaller = signaller;
+
+            // Note - not trying to handle everything here, just trying to handle the
+            // minimum that I can to see if I can get things working.
+            this.signaller.OnSignedIn += OnSignallingSignedIn;
+            this.signaller.OnPeerConnected += OnSignallingPeerConnected;
+            this.signaller.OnMessageFromPeer += OnSignallingMessageFromPeer;
+            this.signaller.OnServerConnectionFailure += OnSignallingServerConnectionFailure;
+            this.signaller.OnDisconnected += OnSignallingDisconnected;
+            this.signaller.OnPeerHangup += OnSignallingPeerHangup;
         }
         public AddressDetails AddressDetails
         {
@@ -68,19 +78,6 @@
         {
             await this.InitialiseAsync();
 
-            if (this.signaller == null)
-            {
-                this.signaller = new Signaller();
-
-                // Note - not trying to handle everything here, just trying to handle the
-                // minimum that I can to see if I can get things working.
-                this.signaller.OnSignedIn += OnSignallingSignedIn;
-                this.signaller.OnPeerConnected += OnSignallingPeerConnected;
-                this.signaller.OnMessageFromPeer += OnSignallingMessageFromPeer;
-                this.signaller.OnServerConnectionFailure += OnSignallingServerConnectionFailure;
-                this.signaller.OnDisconnected += OnSignallingDisconnected;
-                this.signaller.OnPeerHangup += OnSignallingPeerHangup;
-            }
             await this.signaller.ConnectAsync(
                 this.AddressDetails.IPAddress,
                 this.AddressDetails.Port.ToString(),
