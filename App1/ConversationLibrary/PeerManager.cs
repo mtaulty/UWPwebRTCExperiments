@@ -1,16 +1,22 @@
-﻿namespace App1
+﻿namespace ConversationLibrary
 {
     using System;
     using System.Linq;
     using System.Threading.Tasks;
-    using App1.Interfaces;
-    using App1.Utility;
+    using ConversationLibrary.Interfaces;
+    using ConversationLibrary.Utility;
     using Org.WebRtc;
 
     public class PeerManager : IPeerManager
     {
         public event RTCPeerConnectionIceEventDelegate OnIceCandidate;
 
+        // Intention is that this constructor is used when using our cheap IoC.
+        public PeerManager()
+        {
+            this.mediaManager = CheapContainer.Resolve<IMediaManager>();
+        }
+        // And this one for real IoC (autofac in my case)
         public PeerManager(IMediaManager mediaManager)
         {
             this.mediaManager = mediaManager;

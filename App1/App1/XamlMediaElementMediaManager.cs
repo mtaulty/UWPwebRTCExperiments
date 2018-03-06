@@ -1,6 +1,8 @@
 ﻿namespace App1
 {
     using App1.Interfaces;
+    using ConversationLibrary.Interfaces;
+    using ConversationLibrary.Utility;
     using Org.WebRtc;
     using System;
     using System.Linq;
@@ -10,6 +12,10 @@
 
     public class XamlMediaElementMediaManager : IMediaManager
     {
+        public XamlMediaElementMediaManager()
+        {
+            this.xamlElementProvider = CheapContainer.Resolve<IXamlMediaElementProvider>();
+        }
         public XamlMediaElementMediaManager(
             IXamlMediaElementProvider xamlElementProvider)
         {

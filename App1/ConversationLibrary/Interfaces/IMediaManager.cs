@@ -1,7 +1,7 @@
 ﻿using System.Threading.Tasks;
 using Org.WebRtc;
 
-namespace App1.Interfaces
+namespace ConversationLibrary.Interfaces
 {
     public interface IMediaManager
     {

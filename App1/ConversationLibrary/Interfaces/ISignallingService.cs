@@ -1,4 +1,4 @@
-﻿namespace PeerConnectionClient.Interfaces
+﻿namespace ConversationLibrary.Interfaces
 {
     using System.Threading.Tasks;
 

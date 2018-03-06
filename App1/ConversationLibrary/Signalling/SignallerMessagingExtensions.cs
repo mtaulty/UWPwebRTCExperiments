@@ -1,4 +1,4 @@
-﻿namespace App1.Signalling
+﻿namespace ConversationLibrary.Signalling
 {
     using Org.WebRtc;
     using Windows.Data.Json;

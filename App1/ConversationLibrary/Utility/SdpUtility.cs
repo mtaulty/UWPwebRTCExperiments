@@ -1,4 +1,4 @@
-﻿namespace App1.Utility
+﻿namespace ConversationLibrary.Utility
 {
     using Org.WebRtc;
     using System;
@@ -49,7 +49,7 @@
             {
                 // Alter audio entry
                 Regex audioRegex = new Regex("\r\n(m=audio.*RTP.*?)( .\\d*)+");
-                filteredSdp = audioRegex.Replace(filteredSdp, "\r\n$1 " + string.Join(' ', compatibleCodecs.Select(c => c.Id)));
+                filteredSdp = audioRegex.Replace(filteredSdp, "\r\n$1 " + string.Join(" ", compatibleCodecs.Select(c => c.Id)));
             }
 
             // Remove associated rtp mapping, format parameters, feedback parameters

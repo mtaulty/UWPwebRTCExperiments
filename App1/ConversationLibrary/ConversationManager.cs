@@ -1,20 +1,30 @@
-﻿namespace App1
+﻿namespace ConversationLibrary
 {
-    using App1.Interfaces;
-    using App1.Signalling;
+    using ConversationLibrary.Interfaces;
+    using ConversationLibrary.Signalling;
+    using ConversationLibrary.Utility;
     using Org.WebRtc;
-    using PeerConnectionClient.Interfaces;
     using System;
     using System.Threading.Tasks;
     using Windows.Data.Json;
 
     public class ConversationManager : IConversationManager
     {
+        // This constructor is for when using my cheap IoC
+        public ConversationManager()
+        {
+            this.signaller = CheapContainer.Resolve<ISignallingService>();
+            this.peerManager = CheapContainer.Resolve<IPeerManager>();
+            this.peerManager.OnIceCandidate += this.OnLocalIceCandidateDeterminedAsync;
+            this.mediaManager = CheapContainer.Resolve<IMediaManager>();
+            this.dispatcherProvider = CheapContainer.Resolve<IDispatcherProvider>();
+        }
+        // And this for Autofac or real IoC
         public ConversationManager(
             ISignallingService signaller,
             IPeerManager peerManager,
             IMediaManager mediaManager,
-            IXamlDispatcherProvider dispatcherProvider)
+            IDispatcherProvider dispatcherProvider)
         {
             this.signaller = signaller;
             this.peerManager = peerManager;
@@ -183,7 +193,7 @@
         IMediaManager mediaManager;
         IPeerManager peerManager;
         ISignallingService signaller;
-        IXamlDispatcherProvider dispatcherProvider;
+        IDispatcherProvider dispatcherProvider;
         string hostName;
         bool initialised;
     }

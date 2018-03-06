@@ -1,6 +1,6 @@
 ﻿using System.Threading.Tasks;
 
-namespace App1.Interfaces
+namespace ConversationLibrary.Interfaces
 {
     public interface IConversationManager
     {

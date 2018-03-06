@@ -2,6 +2,8 @@
 {
     using App1.Interfaces;
     using App1.Model;
+    using ConversationLibrary.Interfaces;
+    using ConversationLibrary.Utility;
     using System.ComponentModel;
     using System.Runtime.CompilerServices;
     using Windows.UI.Xaml;
@@ -13,16 +15,21 @@
 
         // TODO: bit naughty to have a non-default constructor on a XAML page, could move these out
         // to injected property values.
-        public MainPage(IConversationManager conversationManager, IXamlMediaElementProvider xamlElementProvider)
+        public MainPage(
+            IConversationManager conversationManager = null, 
+            IXamlMediaElementProvider xamlElementProvider = null)
         {
             this.InitializeComponent();
 
             this.addressDetails = new AddressDetails();
 
-            this.conversationManager = conversationManager;
+            this.conversationManager = conversationManager ?? CheapContainer.Resolve<IConversationManager>();
 
             // NB: setting these here is really a race condition unless the components that use
             // them handle their property change notification.
+
+            xamlElementProvider = xamlElementProvider ?? CheapContainer.Resolve<IXamlMediaElementProvider>();
+
             xamlElementProvider.LocalMediaElement = this.localMediaElement;
             xamlElementProvider.RemoteMediaElement = this.remoteMediaElement;
             xamlElementProvider.Dispatcher = this.Dispatcher;

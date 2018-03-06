@@ -1,11 +1,12 @@
-﻿using App1.Interfaces;
-namespace App1
+﻿namespace App1
 {
+    using App1.Interfaces;
     using App1.Utility;
+    using ConversationLibrary.Interfaces;
     using Windows.UI.Core;
     using Windows.UI.Xaml.Controls;
 
-    class XamlMediaElementProvider : BindableBase, IXamlMediaElementProvider
+    public class XamlMediaElementProvider : BindableBase, IXamlMediaElementProvider
     {
         public MediaElement RemoteMediaElement
         {

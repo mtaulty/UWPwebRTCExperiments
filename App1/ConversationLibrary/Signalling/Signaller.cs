@@ -10,7 +10,7 @@
 //*********************************************************
 namespace PeerConnectionClient.Signalling
 {
-    using PeerConnectionClient.Interfaces;
+    using ConversationLibrary.Interfaces;
     using System;
     using System.Collections.Generic;
     using System.Diagnostics;
@@ -23,7 +23,7 @@ namespace PeerConnectionClient.Signalling
     /// <summary>
     /// Signaller instance is used to fire connection events.
     /// </summary>
-    class Signaller : ISignallingService
+    public class Signaller : ISignallingService
     {
         // Connection events
         public event SignedInDelegate OnSignedIn;
